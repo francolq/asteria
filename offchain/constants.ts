@@ -1,13 +1,13 @@
-import { fromText } from "https://deno.land/x/lucid@0.10.7/mod.ts";
-import { AssetClassT, SpeedT } from "./types.ts";
+import { fromText } from "https://deno.land/x/lucid@0.20.5/mod.ts";
+import { AsteriaAsteriaSpend, AsteriaTypesAssetClass, AsteriaTypesSpeed } from "../onchain/src/plutus.ts";
 
-const admin_token: AssetClassT = {
+const admin_token: AsteriaTypesAssetClass = {
   policy: "516238dd0a79bac4bebe041c44bad8bf880d74720733d2fc0d255d28",
   name: fromText("asteriaAdmin"),
 };
 const ship_mint_lovelace_fee = 3_000_000n;
 const max_asteria_mining = 50n;
-const max_speed: SpeedT = {
+const max_speed: AsteriaTypesSpeed = {
   distance: 1n,
   time: 30n * 1000n, //milliseconds
 };

@@ -4,7 +4,7 @@ import {
   TxHash,
   Constr,
   UTxO,
-} from "https://deno.land/x/lucid@0.10.7/mod.ts";
+} from "https://deno.land/x/lucid@0.20.5/mod.ts";
 import { fetchReferenceScript, lucidBase } from "../../../utils.ts";
 import { AssetClassT } from "../../../types.ts";
 

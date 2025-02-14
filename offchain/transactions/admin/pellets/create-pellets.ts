@@ -6,13 +6,14 @@ import {
   Script,
   toUnit,
   TxHash,
-} from "https://deno.land/x/lucid@0.10.7/mod.ts";
+} from "https://deno.land/x/lucid@0.20.5/mod.ts";
 import { fetchReferenceScript, lucidBase } from "../../../utils.ts";
-import { AssetClassT, PelletDatum, PelletDatumT } from "../../../types.ts";
+import { PelletDatum, PelletDatumT } from "../../../types.ts";
+import { PelletPelletSpend, AsteriaTypesAssetClass, AsteriaTypesSpeed } from "../../../../onchain/src/plutus.ts";
 
 async function createPellets(
   prize_tokens: Assets,
-  admin_token: AssetClassT,
+  admin_token: AsteriaTypesAssetClass,
   params: { fuel: bigint; pos_x: bigint; pos_y: bigint }[]
 ): Promise<TxHash> {
   const lucid = await lucidBase();
@@ -27,8 +28,8 @@ async function createPellets(
   );
   const pelletRef = await fetchReferenceScript(lucid, pelletRefTxHash.txHash);
   const pelletValidator = pelletRef.scriptRef as Script;
-  const pelletAddressBech32 = lucid.utils.validatorToAddress(pelletValidator);
-  const fuelPolicyId = lucid.utils.mintingPolicyToId(pelletValidator);
+  const pelletAddressBech32 = lucid.newScript(pelletValidator).toAddress();
+  const fuelPolicyId = lucid.newScript(pelletValidator).toHash();
 
   const spacetimeRefTxHash: { txHash: string } = JSON.parse(
     await Deno.readTextFile("./script-refs/spacetime-ref.json")
@@ -38,7 +39,7 @@ async function createPellets(
     spacetimeRefTxHash.txHash
   );
   const spacetimeValidator = spacetimeRef.scriptRef as Script;
-  const shipyardPolicyId = lucid.utils.mintingPolicyToId(spacetimeValidator);
+  const shipyardPolicyId = lucid.newScript(spacetimeValidator).toHash();
 
   const fuelTokenUnit = toUnit(fuelPolicyId, fromText("FUEL"));
   const adminTokenUnit = toUnit(admin_token.policy, admin_token.name);
@@ -58,7 +59,7 @@ async function createPellets(
 
     tx = tx
       .readFrom([pelletRef])
-      .mintAssets(
+      .mint(
         {
           [fuelTokenUnit]: pellet.fuel,
         },
@@ -66,7 +67,7 @@ async function createPellets(
       )
       .payToContract(
         pelletAddressBech32,
-        { inline: pelletDatum },
+        { Inline: pelletDatum },
         {
           [fuelTokenUnit]: pellet.fuel,
           [adminTokenUnit]: BigInt(1),
@@ -74,8 +75,9 @@ async function createPellets(
         }
       );
   }
-  const completeTx = await tx.complete();
-  const signedTx = await completeTx.sign().complete();
+  const completeTx = await tx.commit();
+  const signedTx = await completeTx.sign().commit();
+  console.log(signedTx.toString());
   return signedTx.submit();
 }
 

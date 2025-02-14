@@ -7,7 +7,7 @@ import {
   Assets,
   fromText,
   toUnit,
-} from "https://deno.land/x/lucid@0.10.7/mod.ts";
+} from "https://deno.land/x/lucid@0.20.5/mod.ts";
 
 const tokenA: AssetClassT = {
   policy: "255d6456fa68e3d858d80e3168b0d76d57b6c4033c6234e2f0de8499",

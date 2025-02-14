@@ -1,16 +1,4 @@
-import { Data } from "https://deno.land/x/lucid@0.10.7/mod.ts";
-
-const AssetClass = Data.Object({
-  policy: Data.Bytes({ maxLength: 28 }),
-  name: Data.Bytes(),
-});
-type AssetClassT = Data.Static<typeof AssetClass>;
-
-const Speed = Data.Object({
-  distance: Data.Integer(),
-  time: Data.Integer(),
-});
-type SpeedT = Data.Static<typeof Speed>;
+import { Data } from "https://deno.land/x/lucid@0.20.5/mod.ts";
 
 const AsteriaDatum = Data.Object({
   ship_counter: Data.Integer(),
@@ -34,5 +22,5 @@ const ShipDatum = Data.Object({
 });
 type ShipDatumT = Data.Static<typeof ShipDatum>;
 
-export { AssetClass, AsteriaDatum, PelletDatum, ShipDatum, Speed };
-export type { AssetClassT, AsteriaDatumT, PelletDatumT, ShipDatumT, SpeedT };
+export { AsteriaDatum, PelletDatum, ShipDatum };
+export type { AsteriaDatumT, PelletDatumT, ShipDatumT };

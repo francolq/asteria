@@ -1,13 +1,15 @@
-import { Data, TxHash } from "https://deno.land/x/lucid@0.10.7/mod.ts";
+import { Address, Data, TxHash } from "https://deno.land/x/lucid@0.20.5/mod.ts";
 import { buildAsteriaValidator } from "../../../scripts/asteria.ts";
 import { lucidBase, writeJson } from "../../../utils.ts";
-import { AssetClassT } from "../../../types.ts";
 import { buildDeployValidator } from "../../../scripts/deploy.ts";
+import { AsteriaTypesAssetClass } from "../../../../onchain/src/plutus.ts";
 
 async function deployAsteria(
-  admin_token: AssetClassT,
+  admin_token: AsteriaTypesAssetClass,
   ship_mint_lovelace_fee: bigint,
-  max_asteria_mining: bigint
+  max_asteria_mining: bigint,
+  initial_fuel: bigint,
+  min_asteria_distance: bigint,
 ): Promise<TxHash> {
   const lucid = await lucidBase();
   const seed = Deno.env.get("SEED");
@@ -16,27 +18,51 @@ async function deployAsteria(
   }
   lucid.selectWalletFromSeed(seed);
 
+  const pelletRefTxHash: { txHash: string } = JSON.parse(
+    await Deno.readTextFile("./script-refs/pellet-ref.json")
+  );
+  const pelletRef = await lucid.utxosByOutRef([
+    {
+      txHash: pelletRefTxHash.txHash,
+      outputIndex: 0,
+    },
+  ]);
+  const pelletValidator = pelletRef[0].scriptRef;
+  if (!pelletValidator) {
+    throw Error("Could not read pellet validator from ref UTxO");
+  }
+  const pelletScriptAddress = lucid.newScript(pelletValidator).toHash();
+
+  console.log("PELLET:", pelletScriptAddress);
+
   const asteriaValidator = buildAsteriaValidator(
+    pelletScriptAddress,
     admin_token,
     ship_mint_lovelace_fee,
-    max_asteria_mining
-  );
+    max_asteria_mining,
+    initial_fuel,
+    min_asteria_distance,
+    );
 
   const deployValidator = buildDeployValidator(admin_token);
-  const deployAddressBech32 = lucid.utils.validatorToAddress(deployValidator);
+  const deployAddressBech32 = lucid.newScript(deployValidator).toAddress();
 
   const tx = await lucid
     .newTx()
     .payToContract(
       deployAddressBech32,
-      { inline: Data.void(), scriptRef: asteriaValidator },
+      {
+        Inline: Data.void(),
+        scriptRef: asteriaValidator,
+      },
       {}
     )
-    .complete();
+    .commit();
 
-  const signedTx = await tx.sign().complete();
+  const signedTx = await tx.sign().commit();
+  console.log(signedTx.toString());
+
   const txHash = await signedTx.submit();
-
   console.log(writeJson("./script-refs/asteria-ref.json", { txHash: txHash }));
   return txHash;
 }

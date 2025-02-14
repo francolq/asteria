@@ -3,11 +3,15 @@ import {
   Script,
   toUnit,
   TxHash,
-} from "https://deno.land/x/lucid@0.10.7/mod.ts";
+} from "https://deno.land/x/lucid@0.20.5/mod.ts";
 import { fetchReferenceScript, lucidBase } from "../../../utils.ts";
-import { AssetClassT, AsteriaDatum, AsteriaDatumT } from "../../../types.ts";
+import {
+  AsteriaAsteriaSpend,
+  AsteriaTypesAssetClass,
+  AsteriaTypesSpeed
+} from "../../../../onchain/src/plutus.ts";
 
-async function createAsteria(admin_token: AssetClassT): Promise<TxHash> {
+async function createAsteria(admin_token: AsteriaTypesAssetClass): Promise<TxHash> {
   const lucid = await lucidBase();
   const seed = Deno.env.get("SEED");
   if (!seed) {
@@ -20,7 +24,7 @@ async function createAsteria(admin_token: AssetClassT): Promise<TxHash> {
   );
   const asteriaRef = await fetchReferenceScript(lucid, asteriaRefTxHash.txHash);
   const asteriaValidator = asteriaRef.scriptRef as Script;
-  const asteriaAddressBech32 = lucid.utils.validatorToAddress(asteriaValidator);
+  const asteriaAddressBech32 = lucid.newScript(asteriaValidator).toAddress();
 
   const spacetimeRefTxHash: { txHash: string } = JSON.parse(
     await Deno.readTextFile("./script-refs/spacetime-ref.json")
@@ -35,31 +39,27 @@ async function createAsteria(admin_token: AssetClassT): Promise<TxHash> {
   if (!spacetimeValidator) {
     throw Error("Could not read pellet validator from ref UTxO");
   }
-  const shipyardPolicyId = lucid.utils.mintingPolicyToId(spacetimeValidator);
+  const shipyardPolicyId = lucid.newScript(spacetimeValidator).toHash();
 
   const asteriaInfo = {
-    ship_counter: 0n,
-    shipyard_policy: shipyardPolicyId,
+    shipCounter: 0n,
+    shipyardPolicy: shipyardPolicyId,
   };
-
-  const asteriaDatum = Data.to<AsteriaDatumT>(
-    asteriaInfo,
-    AsteriaDatum as unknown as AsteriaDatumT
-  );
 
   const adminTokenUnit = toUnit(admin_token.policy, admin_token.name);
   const tx = await lucid
     .newTx()
     .payToContract(
       asteriaAddressBech32,
-      { inline: asteriaDatum },
+      { Inline: Data.to(asteriaInfo, AsteriaAsteriaSpend.datum) },
       {
-        [adminTokenUnit]: BigInt(1),
+        [adminTokenUnit]: 1n,
       }
     )
-    .complete();
+    .commit();
 
-  const signedTx = await tx.sign().complete();
+  const signedTx = await tx.sign().commit();
+  console.log(signedTx.toString());
   return signedTx.submit();
 }
 
