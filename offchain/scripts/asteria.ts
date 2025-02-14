@@ -1,44 +1,32 @@
 import {
+  Address,
   Data,
   SpendingValidator,
   applyParamsToScript,
-} from "https://deno.land/x/lucid@0.10.7/mod.ts";
-import plutusBlueprint from "../../onchain/src/plutus.json" with { type: "json" };
-import { AssetClass, AssetClassT } from "../types.ts";
-
-const asteriaValidator = plutusBlueprint.validators.find(
-  ({ title }) => title === "asteria.spend"
-);
-
-if (!asteriaValidator) {
-  throw new Error("Asteria validator indexed with 'asteria.spend' failed!");
-}
-
-const ASTERIA_SCRIPT: SpendingValidator["script"] =
-  asteriaValidator.compiledCode;
-
-const ValidatorParam = Data.Tuple([
-  AssetClass,
-  Data.Integer({ minimum: 0 }),
-  Data.Integer({ minimum: 0, maximum: 100 }),
-]);
-type ValidatorParamT = Data.Static<typeof ValidatorParam>;
+} from "https://deno.land/x/lucid@0.20.5/mod.ts";
+import {
+  AsteriaAsteriaSpend,
+  AsteriaTypesAssetClass
+} from "../../onchain/src/plutus.ts";
 
 function buildAsteriaValidator(
-  admin_token: AssetClassT,
+  pellet_validator_address: Address,
+  admin_token: AsteriaTypesAssetClass,
   ship_mint_lovelace_fee: bigint,
-  max_asteria_mining: bigint
+  max_asteria_mining: bigint,
+  initial_fuel: bigint,
+  min_asteria_distance: bigint,
 ): SpendingValidator {
-  const appliedValidator = applyParamsToScript<ValidatorParamT>(
-    ASTERIA_SCRIPT,
-    [admin_token, ship_mint_lovelace_fee, max_asteria_mining],
-    ValidatorParam as unknown as ValidatorParamT
+  const validator = new AsteriaAsteriaSpend(
+    pellet_validator_address,
+    admin_token,
+    ship_mint_lovelace_fee,
+    max_asteria_mining,
+    initial_fuel,
+    min_asteria_distance,
   );
 
-  return {
-    type: "PlutusV2",
-    script: appliedValidator,
-  };
+  return validator
 }
 
 export { buildAsteriaValidator };

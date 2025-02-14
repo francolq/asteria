@@ -1,17 +1,15 @@
-import { Data, TxHash } from "https://deno.land/x/lucid@0.10.7/mod.ts";
+import { Data } from "https://deno.land/x/lucid@0.20.5/mod.ts";
 import { lucidBase, writeJson } from "../../../utils.ts";
-import { AssetClassT, SpeedT } from "../../../types.ts";
 import { buildSpacetimeValidator } from "../../../scripts/spacetime.ts";
 import { buildDeployValidator } from "../../../scripts/deploy.ts";
+import { AsteriaTypesAssetClass, AsteriaTypesSpeed } from "../../../../onchain/src/plutus.ts";
 
 async function deploySpacetime(
-  admin_token: AssetClassT,
-  max_speed: SpeedT,
+  admin_token: AsteriaTypesAssetClass,
+  max_speed: AsteriaTypesSpeed,
   max_ship_fuel: bigint,
   fuel_per_step: bigint,
-  initial_fuel: bigint,
-  min_asteria_distance: bigint
-): Promise<TxHash> {
+): Promise<any> {
   const lucid = await lucidBase();
   const seed = Deno.env.get("SEED");
   if (!seed) {
@@ -32,9 +30,8 @@ async function deploySpacetime(
   if (!asteriaValidator) {
     throw Error("Could not read Asteria validator from ref UTxO");
   }
-  const asteriaAddressBech32 = lucid.utils.validatorToAddress(asteriaValidator);
-  const asteriaScriptAddress =
-    lucid.utils.paymentCredentialOf(asteriaAddressBech32).hash;
+  const asteriaAddressBech32 = lucid.newScript(asteriaValidator).toAddress();
+  const asteriaScriptAddress = lucid.newScript(asteriaValidator).toHash();
 
   const pelletRefTxHash: { txHash: string } = JSON.parse(
     await Deno.readTextFile("./script-refs/pellet-ref.json")
@@ -49,9 +46,10 @@ async function deploySpacetime(
   if (!pelletValidator) {
     throw Error("Could not read pellet validator from ref UTxO");
   }
-  const pelletAddressBech32 = lucid.utils.validatorToAddress(pelletValidator);
-  const pelletScriptAddress =
-    lucid.utils.paymentCredentialOf(pelletAddressBech32).hash;
+  const pelletScriptAddress = lucid.newScript(pelletValidator).toHash();
+
+  console.log("PELLET:", pelletScriptAddress);
+  console.log("ASTERIA:", asteriaScriptAddress);
 
   const spacetimeValidator = buildSpacetimeValidator(
     pelletScriptAddress,
@@ -60,23 +58,25 @@ async function deploySpacetime(
     max_speed,
     max_ship_fuel,
     fuel_per_step,
-    initial_fuel,
-    min_asteria_distance
   );
 
   const deployValidator = buildDeployValidator(admin_token);
-  const deployAddressBech32 = lucid.utils.validatorToAddress(deployValidator);
+  const deployAddressBech32 = lucid.newScript(deployValidator).toAddress();
 
   const tx = await lucid
     .newTx()
     .payToContract(
       deployAddressBech32,
-      { inline: Data.void(), scriptRef: spacetimeValidator },
+      {
+        Inline: Data.void(),
+        scriptRef: spacetimeValidator,
+      },
       {}
     )
-    .complete();
+    .commit();
 
-  const signedTx = await tx.sign().complete();
+  const signedTx = await tx.sign().commit();
+  console.log(signedTx.toString());
   const txHash = await signedTx.submit();
 
   console.log(
