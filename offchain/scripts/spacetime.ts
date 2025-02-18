@@ -17,8 +17,6 @@ function buildSpacetimeValidator(
   max_speed: AsteriaTypesSpeed,
   max_ship_fuel: bigint,
   fuel_per_step: bigint,
-  initial_fuel: bigint,
-  min_asteria_distance: bigint,
 ): SpendingValidator {
   const validator = new SpacetimeSpacetimeSpend(
       pellet_validator_address,

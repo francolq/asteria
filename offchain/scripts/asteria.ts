@@ -14,16 +14,16 @@ function buildAsteriaValidator(
   admin_token: AsteriaTypesAssetClass,
   ship_mint_lovelace_fee: bigint,
   max_asteria_mining: bigint,
-  initial_fuel: bigint,
   min_asteria_distance: bigint,
+  initial_fuel: bigint,
 ): SpendingValidator {
   const validator = new AsteriaAsteriaSpend(
     pellet_validator_address,
     admin_token,
     ship_mint_lovelace_fee,
     max_asteria_mining,
-    initial_fuel,
     min_asteria_distance,
+    initial_fuel,
   );
 
   return validator
