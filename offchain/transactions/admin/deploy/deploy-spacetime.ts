@@ -48,8 +48,8 @@ async function deploySpacetime(
   }
   const pelletScriptAddress = lucid.newScript(pelletValidator).toHash();
 
-  console.log("PELLET:", pelletScriptAddress);
-  console.log("ASTERIA:", asteriaScriptAddress);
+  console.log("PELLET SCRIPT ADDRESS:", pelletScriptAddress);
+  console.log("ASTERIA SCRIPT ADDRESS:", asteriaScriptAddress);
 
   const spacetimeValidator = buildSpacetimeValidator(
     pelletScriptAddress,
@@ -59,6 +59,10 @@ async function deploySpacetime(
     max_ship_fuel,
     fuel_per_step,
   );
+
+  // ONLY FOR LOGGING PURPOSES:
+  const spacetimeScriptAddress = lucid.newScript(spacetimeValidator).toHash();
+  console.log("SPACETIME SCRIPT ADDRESS:", spacetimeScriptAddress);
 
   const deployValidator = buildDeployValidator(admin_token);
   const deployAddressBech32 = lucid.newScript(deployValidator).toAddress();

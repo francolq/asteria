@@ -33,16 +33,20 @@ async function deployAsteria(
   }
   const pelletScriptAddress = lucid.newScript(pelletValidator).toHash();
 
-  console.log("PELLET:", pelletScriptAddress);
+  console.log("PELLET SCRIPT ADDRESS:", pelletScriptAddress);
 
   const asteriaValidator = buildAsteriaValidator(
     pelletScriptAddress,
     admin_token,
     ship_mint_lovelace_fee,
     max_asteria_mining,
-    initial_fuel,
     min_asteria_distance,
-    );
+    initial_fuel,
+  );
+
+  // ONLY FOR LOGGING PURPOSES:
+  const asteriaScriptAddress = lucid.newScript(asteriaValidator).toHash();
+  console.log("ASTERIA SCRIPT ADDRESS:", asteriaScriptAddress);
 
   const deployValidator = buildDeployValidator(admin_token);
   const deployAddressBech32 = lucid.newScript(deployValidator).toAddress();
