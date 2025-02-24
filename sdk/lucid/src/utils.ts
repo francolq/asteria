@@ -15,4 +15,14 @@ const lucidBase = async (): Promise<Lucid> => {
   return lucid;
 };
 
-export { lucidBase };
+const abs = (n: bigint) => (n < 0n ? -n : n);
+
+const distance = (delta_x: bigint, delta_y: bigint): bigint => {
+  return abs(delta_x) + abs(delta_y);
+};
+
+const required_fuel = (distance: bigint, fuel_per_step: bigint): bigint => {
+  return distance * fuel_per_step;
+};
+
+export { lucidBase, distance, required_fuel };
