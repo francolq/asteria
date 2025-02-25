@@ -12,7 +12,8 @@ import {
   PelletPelletSpend,
   SpacetimeSpacetimeSpend,
   SpacetimeSpacetimeMint,
-  PelletPelletMint
+  PelletPelletMint,
+  AsteriaTypesShipRedeemer,
 } from "../../../onchain/src/plutus.ts";
 import {
   admin_token,
@@ -47,6 +48,9 @@ const lucid = new Lucid({
   provider: emulator,
   wallet: { PrivateKey: privateKey },
 });
+const slotZeroTime = emulator.now();
+
+console.log("SLOT ZERO TIME:", slotZeroTime);
 
 console.log("DEPLOYING ASTERIA");
 
@@ -164,9 +168,41 @@ const asteriaDatum2 = Data.from(asteria.datum, AsteriaAsteriaSpend.datum);
 // console.log(asteriaDatum2);
 
 //
-// SHIP CREATION TX
+// CREATE PELLET
 //
 const fuelToken = pelletHash + fromText("FUEL");
+const pelletDatum = {
+  posX: 20n,
+  posY: 20n,
+  shipyardPolicy: spacetimeHash,
+};
+const pelletTx = await lucid
+  .newTx()
+  .readFrom([pelletRef])
+  .mint(
+    {
+      [fuelToken]: 1000n,
+    },
+    Data.to("MintFuel", PelletPelletMint.redeemer)
+  )
+  .payToContract(
+    pelletAddress,
+    { Inline: Data.to(pelletDatum, PelletPelletSpend.datum) },
+    {
+      [adminToken]: 1n,
+      [fuelToken]: 1000n,
+    }
+  )
+  .commit();
+
+const signedPelletTx = await pelletTx.sign().commit();
+const pelletTxHash = await signedPelletTx.submit();
+emulator.awaitTx(pelletTxHash);
+console.log("PELLET TXHASH:", pelletTxHash);
+
+//
+// SHIP CREATION TX
+//
 const shipToken = spacetimeHash + fromText("SHIP" + asteriaDatum.shipCounter);
 const pilotToken = spacetimeHash + fromText("PILOT" + asteriaDatum.shipCounter);
 
@@ -185,7 +221,7 @@ const asteriaDatum3 = {
   shipyardPolicy: asteriaDatum.shipyardPolicy,
 };
 
-const tx = await lucid
+const createShipTx = await lucid
   .newTx()
   .validTo(ttl)  // beware: this number gets rounded down
   .readFrom([asteriaRef, spacetimeRef, pelletRef])
@@ -222,7 +258,78 @@ const tx = await lucid
       lovelace: asteria.assets.lovelace + ship_mint_lovelace_fee,
     }
   )
-  // .toInstructions();
   .commit();
 
-console.log(tx);
+const signedCreateShipTx = await createShipTx.sign().commit();
+const createShipTxHash = await signedCreateShipTx.submit();
+emulator.awaitTx(createShipTxHash);
+console.log("CREATE SHIP TXHASH:", createShipTxHash);
+
+//
+// GATHER FUEL TX
+//
+const [ship] = await lucid.utxosByOutRef([{
+  txHash: createShipTxHash,
+  outputIndex: 0,  // the ship is always the first output
+}]);
+const [pellet] = await lucid.utxosByOutRef([{
+  txHash: pelletTxHash,
+  outputIndex: 0,
+}]);
+
+const gatherRedeemer : AsteriaTypesShipRedeemer = {
+  GatherFuel: { amount: 22n }
+};
+const gatherRedeemerData = Data.to(gatherRedeemer, SpacetimeSpacetimeSpend.redeemer);
+console.log("gatherRedeemerData:", gatherRedeemerData);
+
+const pelletRedeemer : AsteriaTypesPelletRedeemer = {
+  Provide: { amount: 22n }
+};
+const pelletRedeemerData = Data.to(pelletRedeemer, PelletPelletSpend.redeemer);
+console.log("pelletRedeemerData:", pelletRedeemerData);
+
+// one minute later after create ship ttl (slot = seconds = ms / 1000)
+const slot = (ttl - slotZeroTime) / 1000 + 60;
+console.log("SLOT:", slot);
+emulator.awaitSlot(slot);
+console.log("TIMESTAMP:", slot * 1000 + slotZeroTime);
+console.log("emulator now:", emulator.now());
+
+// const ttl2 = emulator.now() - 10 * 60 * 1000; // now - 10 minutes (in miliseconds)
+const ttl2 = emulator.now() - 60 * 1000; // now - 1 minutes (in miliseconds)
+console.log("NOW2:", ttl2);
+
+const gatherTx = await lucid
+  .newTx()
+  .validFrom(ttl2)
+  .readFrom([spacetimeRef, pelletRef])
+  .collectFrom([ship], gatherRedeemerData)
+  .collectFrom([pellet], pelletRedeemerData)
+  .payToContract(
+    spacetimeAddress,
+    // reuse shipDatum
+    { Inline: Data.to(shipDatum, SpacetimeSpacetimeSpend.datum) },
+    {
+      [shipToken]: 1n,
+      [fuelToken]: initial_fuel + 22n,
+    }
+  )
+  .payToContract(
+    pelletAddress,
+    // reuse pelletDatum
+    { Inline: Data.to(pelletDatum, PelletPelletSpend.datum) },
+    {
+      [adminToken]: 1n,
+      [fuelToken]: 1000n - 22n,
+    }
+  )
+  .payTo(await lucid.wallet.address(), {
+    [pilotToken]: 1n,
+  })
+  .commit();
+
+const signedGatherTx = await gatherTx.sign().commit();
+const gatherTxHash = await signedGatherTx.submit();
+emulator.awaitTx(gatherTxHash);
+console.log("GATHER FUEL TXHASH:", gatherTxHash);
